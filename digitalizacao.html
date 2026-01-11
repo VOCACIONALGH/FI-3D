@@ -44,8 +44,23 @@
       background: red;
       box-shadow: 0 0 8px rgba(255,0,0,0.8);
       transform: translate(-50%, -50%); /* centralizar o ponto */
-      pointer-events: none; /* não atrapalha interações com o viewer */
+      pointer-events: none; /* não atrapalha interações com o viewer por padrão */
       touch-action: none;
+      transition: box-shadow 0.12s, transform 0.12s;
+    }
+
+    /* quando hotspots estiverem em modo selecionável (modo medir desligado) */
+    .measurement-hotspot.selectable {
+      pointer-events: auto;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    /* hotspot selecionado */
+    .measurement-hotspot.selected {
+      box-shadow: 0 0 12px rgba(0,255,0,0.95);
+      transform: translate(-50%, -50%) scale(1.15);
+      border: 2px solid rgba(0,255,0,0.9);
     }
 
     /* cursor indicando modo medir */
@@ -90,6 +105,7 @@
     let currentObjectURL = null;
     let measuringMode = false; // indica se clique adicionará pontos
     let measurementCount = 0;   // contador para hotspots únicos
+    let selectedHotspots = [];  // array para armazenar até dois hotspots selecionados
 
     btnCarregar.addEventListener('click', () => {
       fileInput.click();
@@ -120,54 +136,134 @@
       alert("Arquivo carregado");
     });
 
+    // Atualiza estado dos hotspots quando modo de medição muda
+    function updateHotspotsSelectableState() {
+      const hotspots = viewer.querySelectorAll('.measurement-hotspot');
+      hotspots.forEach(h => {
+        if (measuringMode) {
+          h.classList.remove('selectable', 'selected');
+        } else {
+          h.classList.add('selectable');
+        }
+      });
+      selectedHotspots = [];
+    }
+
     // botão Medir: alterna modo de medição ON/OFF.
     // Quando ON, cada clique no modelo adiciona um ponto vermelho preso à malha.
+    // Quando OFF, o usuário pode selecionar até dois pontos vermelhos para medir.
     btnMedir.addEventListener('click', () => {
       measuringMode = !measuringMode;
       if (measuringMode) {
         viewerContainer.classList.add('measuring-cursor');
+        btnMedir.textContent = 'Medir (ON)';
       } else {
         viewerContainer.classList.remove('measuring-cursor');
+        btnMedir.textContent = 'Medir (OFF)';
       }
+      updateHotspotsSelectableState();
     });
 
-    // Ao clicar no model-viewer, se estivermos em measuringMode, tentamos obter posição 3D
+    // Ao clicar no model-viewer:
+    // - se measuringMode == true: adiciona hotspot na malha (mesmo comportamento anterior)
+    // - se measuringMode == false: permite seleção de hotspots já existentes e calcula distância quando houver 2 selecionados
     viewer.addEventListener('click', async (event) => {
-      if (!measuringMode) return;
+      if (measuringMode) {
+        // Verifica se API positionAndNormalFromPoint existe
+        if (typeof viewer.positionAndNormalFromPoint !== 'function') {
+          console.warn('positionAndNormalFromPoint não disponível neste browser/versão do model-viewer.');
+          return;
+        }
 
-      // Verifica se API positionAndNormalFromPoint existe
-      if (typeof viewer.positionAndNormalFromPoint !== 'function') {
-        console.warn('positionAndNormalFromPoint não disponível neste browser/versão do model-viewer.');
+        // event.clientX, event.clientY são coordenadas do clique na janela
+        const posAndNorm = viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
+
+        if (!posAndNorm) {
+          // clique não atingiu a malha; ignora
+          return;
+        }
+
+        const pos = posAndNorm.position; // {x, y, z}
+        const norm = posAndNorm.normal;  // {x, y, z}
+
+        // cria hotspot único preso à malha usando slot e data-position/data-normal
+        const positionString = `${pos.x} ${pos.y} ${pos.z}`;
+        const normalString = `${norm.x} ${norm.y} ${norm.z}`;
+
+        const hotspot = document.createElement('div');
+        hotspot.id = `measurementHotspot-${measurementCount}`;
+        hotspot.className = 'measurement-hotspot';
+        hotspot.setAttribute('slot', `hotspot-${measurementCount}`);
+        hotspot.setAttribute('data-position', positionString);
+        hotspot.setAttribute('data-normal', normalString);
+
+        // Anexa o hotspot ao viewer (o model-viewer posiciona o elemento no espaço 3D)
+        viewer.appendChild(hotspot);
+
+        measurementCount += 1;
+        // measuringMode permanece ativo para permitir seleção de múltiplos pontos
         return;
       }
 
-      // event.clientX, event.clientY são coordenadas do clique na janela
-      const posAndNorm = viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
+      // --- modo medir desligado: seleção de hotspots existentes ---
+      // verifica se o clique foi sobre um hotspot
+      // event.target pode ser o elemento hotspot diretamente
+      let targetHotspot = event.target;
+      // caso o target seja um elemento filho, procuramos o ancestor com a classe
+      if (!targetHotspot.classList || !targetHotspot.classList.contains('measurement-hotspot')) {
+        if (typeof targetHotspot.closest === 'function') {
+          targetHotspot = targetHotspot.closest('.measurement-hotspot');
+        } else {
+          targetHotspot = null;
+        }
+      }
 
-      if (!posAndNorm) {
-        // clique não atingiu a malha; ignora
+      if (!targetHotspot) return; // clique fora de hotspot
+
+      // se o hotspot não estiver em modo selecionável, ignora
+      if (!targetHotspot.classList.contains('selectable')) return;
+
+      // lógica de seleção: toggla seleção; mantém no máximo 2 selecionados
+      const alreadySelected = targetHotspot.classList.contains('selected');
+
+      if (alreadySelected) {
+        // desmarcar
+        targetHotspot.classList.remove('selected');
+        selectedHotspots = selectedHotspots.filter(h => h !== targetHotspot);
         return;
       }
 
-      const pos = posAndNorm.position; // {x, y, z}
-      const norm = posAndNorm.normal;  // {x, y, z}
+      // se já há 2 selecionados, remove o primeiro (mantemos sempre os dois últimos)
+      if (selectedHotspots.length === 2) {
+        const first = selectedHotspots.shift();
+        if (first) first.classList.remove('selected');
+      }
 
-      // cria hotspot único preso à malha usando slot e data-position/data-normal
-      const positionString = `${pos.x} ${pos.y} ${pos.z}`;
-      const normalString = `${norm.x} ${norm.y} ${norm.z}`;
+      // marcar o novo
+      targetHotspot.classList.add('selected');
+      selectedHotspots.push(targetHotspot);
 
-      const hotspot = document.createElement('div');
-      hotspot.id = `measurementHotspot-${measurementCount}`;
-      hotspot.className = 'measurement-hotspot';
-      hotspot.setAttribute('slot', `hotspot-${measurementCount}`);
-      hotspot.setAttribute('data-position', positionString);
-      hotspot.setAttribute('data-normal', normalString);
+      // se há 2 selecionados agora, calcula distância e informa em mm
+      if (selectedHotspots.length === 2) {
+        const pA = selectedHotspots[0].getAttribute('data-position').trim().split(/\s+/).map(Number);
+        const pB = selectedHotspots[1].getAttribute('data-position').trim().split(/\s+/).map(Number);
 
-      // Anexa o hotspot ao viewer (o model-viewer posiciona o elemento no espaço 3D)
-      viewer.appendChild(hotspot);
+        if (pA.length === 3 && pB.length === 3 && pA.every(Number.isFinite) && pB.every(Number.isFinite)) {
+          const dx = pA[0] - pB[0];
+          const dy = pA[1] - pB[1];
+          const dz = pA[2] - pB[2];
+          const distMeters = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-      measurementCount += 1;
-      // measuringMode permanece ativo para permitir seleção de múltiplos pontos
+          // CONVERSÃO: assume-se que as unidades do modelo estão em metros.
+          // A distância será exibida em milímetros (mm).
+          const distMm = distMeters * 1000;
+
+          // mostrar o resultado em mm com duas casas decimais
+          alert(`Distância entre pontos: ${distMm.toFixed(2)} mm`);
+        } else {
+          console.warn('Dados de posição inválidos para cálculo de distância.');
+        }
+      }
     });
 
     // ao deixar a página, liberar object URL se existir
