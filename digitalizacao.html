@@ -29,45 +29,11 @@
       touch-action: auto; /* permite pinch-zoom em dispositivos touch */
       user-select: none;
       -webkit-user-select: none;
-      /* garantir que sombras possam ser visíveis */
-      --poster-color: transparent;
     }
 
     /* botão e layout seguem o estilo global, mas garantimos espaçamento */
-    #app > button, #app > input, #controls > label {
+    #app > button, #app > input {
       margin: 10px 0;
-    }
-
-    /* layout dos controles de exposição e sombra */
-    #controls {
-      width: 90%;
-      max-width: 720px;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      margin: 10px auto;
-      color: #222;
-    }
-
-    .control-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .control-row label {
-      min-width: 140px;
-      font-size: 14px;
-    }
-
-    .control-row input[type="range"] {
-      flex: 1;
-    }
-
-    .control-value {
-      min-width: 48px;
-      text-align: right;
-      font-family: monospace;
     }
   </style>
 </head>
@@ -79,49 +45,13 @@
     <button id="btnCarregar">Carregar</button>
     <input type="file" id="fileInput" accept=".glb" style="display:none">
 
-    <!-- controles para exposição e intensidade de sombras -->
-    <!--
-      Parâmetros editáveis adicionados (explicação):
-
-      1) exposure (atributo do <model-viewer>)
-         - O controle "Exposição (luz ambiente)" ajusta a exposição aplicada ao modelo.
-         - Atributo DOM: "exposure"
-         - Faixa sugerida no controle: 0.0 (escuro) a 3.0 (muito claro)
-         - Valor inicial padrão no código: 1.0
-
-      2) shadow-intensity (atributo do <model-viewer>)
-         - O controle "Intensidade das sombras" ajusta a força das sombras projetadas no modelo.
-         - Atributo DOM: "shadow-intensity"
-         - Faixa sugerida no controle: 0.0 (sem sombra) a 1.0 (sombra forte)
-         - Valor inicial padrão no código: 1.0
-
-      Observação técnica:
-      - Os controles simplesmente atualizam os atributos do elemento <model-viewer>,
-        usando setAttribute(...). Nenhuma outra funcionalidade foi adicionada ao programa.
-    -->
-
-    <div id="controls" aria-hidden="false">
-      <div class="control-row">
-        <label for="exposureRange">Exposição (luz ambiente)</label>
-        <input id="exposureRange" type="range" min="0" max="3" step="0.05" value="1">
-        <div id="exposureValue" class="control-value">1.00</div>
-      </div>
-
-      <div class="control-row">
-        <label for="shadowRange">Intensidade das sombras</label>
-        <input id="shadowRange" type="range" min="0" max="1" step="0.01" value="1">
-        <div id="shadowValue" class="control-value">1.00</div>
-      </div>
-    </div>
-
     <!-- área onde o modelo será mostrado com fundo preto -->
     <div id="viewerContainer">
       <!-- inicialmente oculto; será exibido quando um arquivo for carregado
            camera-controls permite rotacionar; zoom está habilitado por omissão -->
       <model-viewer id="viewer"
                     style="display:none; background:black;"
-                    exposure="1"
-                    shadow-intensity="1"
+                    exposure="0.30"
                     alt="Modelo 3D carregado"
                     interaction-prompt="none"
                     camera-controls></model-viewer>
@@ -134,12 +64,6 @@
     const btnCarregar = document.getElementById('btnCarregar');
     const fileInput = document.getElementById('fileInput');
     const viewer = document.getElementById('viewer');
-
-    // controles adicionados
-    const exposureRange = document.getElementById('exposureRange');
-    const exposureValue = document.getElementById('exposureValue');
-    const shadowRange = document.getElementById('shadowRange');
-    const shadowValue = document.getElementById('shadowValue');
 
     let currentObjectURL = null;
 
@@ -182,42 +106,6 @@
     document.getElementById('btnMenu').addEventListener('click', () => {
       window.location.href = 'index.html';
     });
-
-    // -------------------------------------------------------------------------
-    // Lógica mínima para atualizar exposição e intensidade das sombras no <model-viewer>
-    // Mantemos o comportamento existente do programa; somente atualizamos atributos.
-    // -------------------------------------------------------------------------
-
-    // Inicializa os controles com os atributos atuais do model-viewer
-    (function initControls() {
-      // leitura dos atributos já definidos no elemento (<model-viewer exposure="1" shadow-intensity="1">)
-      const initialExposure = parseFloat(viewer.getAttribute('exposure')) || 1.0;
-      const initialShadow = parseFloat(viewer.getAttribute('shadow-intensity')) || 1.0;
-
-      exposureRange.value = initialExposure;
-      exposureValue.textContent = Number(initialExposure).toFixed(2);
-
-      shadowRange.value = initialShadow;
-      shadowValue.textContent = Number(initialShadow).toFixed(2);
-    })();
-
-    // Quando o usuário move o controle, atualizamos o atributo correspondente.
-    exposureRange.addEventListener('input', (e) => {
-      const v = parseFloat(e.target.value);
-      // atualizar atributo 'exposure' do model-viewer
-      viewer.setAttribute('exposure', String(v));
-      exposureValue.textContent = v.toFixed(2);
-    });
-
-    shadowRange.addEventListener('input', (e) => {
-      const v = parseFloat(e.target.value);
-      // atualizar atributo 'shadow-intensity' do model-viewer
-      viewer.setAttribute('shadow-intensity', String(v));
-      shadowValue.textContent = v.toFixed(2);
-    });
-
-    // Observação: alterações via setAttribute atualizam imediatamente a visualização
-    // no model-viewer sem necessidade de recarregar o modelo.
   </script>
 
 </body>
