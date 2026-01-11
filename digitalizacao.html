@@ -88,7 +88,8 @@
     const viewerContainer = document.getElementById('viewerContainer');
 
     let currentObjectURL = null;
-    let measuringMode = false; // indica que próximo clique fará a medição
+    let measuringMode = false; // indica se clique adicionará pontos
+    let measurementCount = 0;   // contador para hotspots únicos
 
     btnCarregar.addEventListener('click', () => {
       fileInput.click();
@@ -119,12 +120,15 @@
       alert("Arquivo carregado");
     });
 
-    // botão Medir: ativa modo de medição (próximo clique no modelo marca o ponto)
+    // botão Medir: alterna modo de medição ON/OFF.
+    // Quando ON, cada clique no modelo adiciona um ponto vermelho preso à malha.
     btnMedir.addEventListener('click', () => {
-      // habilita modo medir
-      measuringMode = true;
-      // altera cursor do container para indicar medição
-      viewerContainer.classList.add('measuring-cursor');
+      measuringMode = !measuringMode;
+      if (measuringMode) {
+        viewerContainer.classList.add('measuring-cursor');
+      } else {
+        viewerContainer.classList.remove('measuring-cursor');
+      }
     });
 
     // Ao clicar no model-viewer, se estivermos em measuringMode, tentamos obter posição 3D
@@ -133,50 +137,37 @@
 
       // Verifica se API positionAndNormalFromPoint existe
       if (typeof viewer.positionAndNormalFromPoint !== 'function') {
-        // API não disponível: apenas desativa o modo sem criar ponto
         console.warn('positionAndNormalFromPoint não disponível neste browser/versão do model-viewer.');
-        measuringMode = false;
-        viewerContainer.classList.remove('measuring-cursor');
         return;
       }
 
       // event.clientX, event.clientY são coordenadas do clique na janela
-      // positionAndNormalFromPoint aceita coordenadas clientX, clientY
       const posAndNorm = viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
 
       if (!posAndNorm) {
-        // clique não atingiu a malha; mantém modo desligado
-        measuringMode = false;
-        viewerContainer.classList.remove('measuring-cursor');
+        // clique não atingiu a malha; ignora
         return;
       }
 
       const pos = posAndNorm.position; // {x, y, z}
       const norm = posAndNorm.normal;  // {x, y, z}
 
-      // cria ou atualiza hotspot preso à malha
-      let hotspot = document.getElementById('measurementHotspot');
+      // cria hotspot único preso à malha usando slot e data-position/data-normal
       const positionString = `${pos.x} ${pos.y} ${pos.z}`;
       const normalString = `${norm.x} ${norm.y} ${norm.z}`;
 
-      if (!hotspot) {
-        hotspot = document.createElement('div');
-        hotspot.id = 'measurementHotspot';
-        hotspot.className = 'measurement-hotspot';
-        // slot name must follow model-viewer hotspot pattern
-        hotspot.setAttribute('slot', 'hotspot-1');
-        hotspot.setAttribute('data-position', positionString);
-        hotspot.setAttribute('data-normal', normalString);
-        // Append hotspot to the model-viewer so it's positioned in 3D space
-        viewer.appendChild(hotspot);
-      } else {
-        hotspot.setAttribute('data-position', positionString);
-        hotspot.setAttribute('data-normal', normalString);
-      }
+      const hotspot = document.createElement('div');
+      hotspot.id = `measurementHotspot-${measurementCount}`;
+      hotspot.className = 'measurement-hotspot';
+      hotspot.setAttribute('slot', `hotspot-${measurementCount}`);
+      hotspot.setAttribute('data-position', positionString);
+      hotspot.setAttribute('data-normal', normalString);
 
-      // reset mode medir
-      measuringMode = false;
-      viewerContainer.classList.remove('measuring-cursor');
+      // Anexa o hotspot ao viewer (o model-viewer posiciona o elemento no espaço 3D)
+      viewer.appendChild(hotspot);
+
+      measurementCount += 1;
+      // measuringMode permanece ativo para permitir seleção de múltiplos pontos
     });
 
     // ao deixar a página, liberar object URL se existir
