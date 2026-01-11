@@ -10,11 +10,30 @@
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
   <style>
+    /* fundo preto para a área da digitalização */
+    #viewerContainer {
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 60vh; /* altura visual agradável em mobile */
+      box-sizing: border-box;
+    }
+
     model-viewer {
-      width: 300px;
-      height: 300px;
-      background-color: black;
-      margin-top: 20px;
+      width: 100%;
+      height: 100%;
+      /* torna o <model-viewer> não interativo (apenas visualização estática) */
+      pointer-events: none;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* botão e layout seguem o estilo global, mas garantimos espaçamento */
+    #app > button, #app > input {
+      margin: 10px 0;
     }
   </style>
 </head>
@@ -26,11 +45,15 @@
     <button id="btnCarregar">Carregar</button>
     <input type="file" id="fileInput" accept=".glb" style="display:none">
 
-    <model-viewer
-      id="viewer"
-      reveal="manual"
-      interaction-prompt="none">
-    </model-viewer>
+    <!-- área onde o modelo será mostrado com fundo preto -->
+    <div id="viewerContainer">
+      <!-- inicialmente oculto; será exibido quando um arquivo for carregado -->
+      <model-viewer id="viewer"
+                    style="display:none; background:black;"
+                    exposure="1"
+                    alt="Modelo 3D carregado"
+                    interaction-prompt="none"></model-viewer>
+    </div>
 
     <button id="btnMenu">Menu</button>
   </div>
@@ -40,6 +63,8 @@
     const fileInput = document.getElementById('fileInput');
     const viewer = document.getElementById('viewer');
 
+    let currentObjectURL = null;
+
     btnCarregar.addEventListener('click', () => {
       fileInput.click();
     });
@@ -48,15 +73,33 @@
       const file = fileInput.files[0];
       if (!file) return;
 
+      // salva no cache como antes
       const cache = await caches.open('menu-app-cache');
       const response = new Response(file);
       await cache.put(`digitalizacoes/${file.name}`, response);
 
-      const url = URL.createObjectURL(file);
-      viewer.src = url;
+      // criar URL para exibir no model-viewer
+      if (currentObjectURL) {
+        // libera URL anterior
+        URL.revokeObjectURL(currentObjectURL);
+        currentObjectURL = null;
+      }
+      currentObjectURL = URL.createObjectURL(file);
+
+      // mostra o model-viewer com o arquivo carregado
+      viewer.src = currentObjectURL;
       viewer.style.display = 'block';
 
+      // mantém o viewer estático e não-interativo (pointer-events: none feito via CSS)
+      // informa o usuário
       alert("Arquivo carregado");
+    });
+
+    // ao deixar a página, liberar object URL se existir
+    window.addEventListener('beforeunload', () => {
+      if (currentObjectURL) {
+        try { URL.revokeObjectURL(currentObjectURL); } catch (e) {}
+      }
     });
 
     document.getElementById('btnMenu').addEventListener('click', () => {
