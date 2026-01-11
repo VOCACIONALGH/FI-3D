@@ -11,14 +11,15 @@
   <div id="app">
     <h1>Página do Registro</h1>
 
-    <form>
+    <form id="registroForm">
       <input
         type="text"
+        id="codigoProduto"
         placeholder="Código do produto"
         required
       >
 
-      <select required>
+      <select id="setor" required>
         <option value="">Setor</option>
         <option value="Engenharia">Engenharia</option>
         <option value="Produção">Produção</option>
@@ -27,6 +28,7 @@
 
       <input
         type="text"
+        id="digitalizacao"
         placeholder="Digitalização"
         required
       >
@@ -37,7 +39,33 @@
     <button id="btnMenu">Menu</button>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBgZ73lT6zJG3xDh66QEp0BFFjZN7B0ogc",
+      authDomain: "fi-3d-8ef57.firebaseapp.com",
+      projectId: "fi-3d-8ef57",
+      storageBucket: "fi-3d-8ef57.firebasestorage.app",
+      messagingSenderId: "298462862962",
+      appId: "1:298462862962:web:5767ccbedf69ef59162ceb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    document.getElementById('registroForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      await addDoc(collection(db, "registros"), {
+        codigoProduto: document.getElementById('codigoProduto').value,
+        setor: document.getElementById('setor').value,
+        digitalizacao: document.getElementById('digitalizacao').value,
+        timestamp: serverTimestamp()
+      });
+    });
+
     document.getElementById('btnMenu').addEventListener('click', () => {
       window.location.href = 'index.html';
     });
