@@ -58,12 +58,18 @@
     document.getElementById('registroForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      const agora = new Date();
+
       await addDoc(collection(db, "registros"), {
         codigoProduto: document.getElementById('codigoProduto').value,
         setor: document.getElementById('setor').value,
         digitalizacao: document.getElementById('digitalizacao').value,
+        data: agora.toLocaleDateString('pt-BR'),
+        hora: agora.toLocaleTimeString('pt-BR'),
         timestamp: serverTimestamp()
       });
+
+      alert("Registro concluído");
     });
 
     document.getElementById('btnMenu').addEventListener('click', () => {
