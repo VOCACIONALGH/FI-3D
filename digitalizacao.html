@@ -13,14 +13,12 @@
     /* fundo preto para a área da digitalização */
     #viewerContainer {
       background: black;
-      position: relative; /* necessário para posicionar o marcador */
       display: flex;
       justify-content: center;
       align-items: center;
       width: 100%;
       height: 60vh; /* altura visual agradável em mobile */
       box-sizing: border-box;
-      overflow: hidden;
     }
 
     model-viewer {
@@ -33,30 +31,26 @@
       -webkit-user-select: none;
     }
 
-    /* estilo do marcador (ponto destacado) */
-    .marker {
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: rgba(255, 0, 0, 0.95);
-      box-shadow: 0 0 10px rgba(255,0,0,0.6);
-      transform: translate(-50%, -50%);
-      pointer-events: none; /* não bloqueia interação com o modelo */
-      z-index: 10;
-    }
-
-    /* indicação visual quando em modo medir */
-    #measuringIndicator {
-      display: none;
-      margin-bottom: 8px;
-      font-size: 14px;
-      color: #333;
-    }
-
     /* botão e layout seguem o estilo global, mas garantimos espaçamento */
     #app > button, #app > input {
       margin: 10px 0;
+    }
+
+    /* estilo do hotspot (ponto vermelho) */
+    .measurement-hotspot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: red;
+      box-shadow: 0 0 8px rgba(255,0,0,0.8);
+      transform: translate(-50%, -50%); /* centralizar o ponto */
+      pointer-events: none; /* não atrapalha interações com o viewer */
+      touch-action: none;
+    }
+
+    /* cursor indicando modo medir */
+    .measuring-cursor {
+      cursor: crosshair !important;
     }
   </style>
 </head>
@@ -68,8 +62,7 @@
     <button id="btnCarregar">Carregar</button>
     <input type="file" id="fileInput" accept=".glb" style="display:none">
 
-    <!-- novo botão Medir -->
-    <div id="measuringIndicator">Modo medir ativo: clique em um ponto do modelo para destacar.</div>
+    <!-- botão Medir -->
     <button id="btnMedir">Medir</button>
 
     <!-- área onde o modelo será mostrado com fundo preto -->
@@ -82,8 +75,6 @@
                     alt="Modelo 3D carregado"
                     interaction-prompt="none"
                     camera-controls></model-viewer>
-
-      <!-- marcador será inserido aqui dinamicamente -->
     </div>
 
     <button id="btnMenu">Menu</button>
@@ -93,15 +84,11 @@
     const btnCarregar = document.getElementById('btnCarregar');
     const fileInput = document.getElementById('fileInput');
     const viewer = document.getElementById('viewer');
-    const viewerContainer = document.getElementById('viewerContainer');
-    const btnMenu = document.getElementById('btnMenu');
-
     const btnMedir = document.getElementById('btnMedir');
-    const measuringIndicator = document.getElementById('measuringIndicator');
+    const viewerContainer = document.getElementById('viewerContainer');
 
     let currentObjectURL = null;
-    let measuring = false;
-    let currentMarker = null;
+    let measuringMode = false; // indica que próximo clique fará a medição
 
     btnCarregar.addEventListener('click', () => {
       fileInput.click();
@@ -132,6 +119,66 @@
       alert("Arquivo carregado");
     });
 
+    // botão Medir: ativa modo de medição (próximo clique no modelo marca o ponto)
+    btnMedir.addEventListener('click', () => {
+      // habilita modo medir
+      measuringMode = true;
+      // altera cursor do container para indicar medição
+      viewerContainer.classList.add('measuring-cursor');
+    });
+
+    // Ao clicar no model-viewer, se estivermos em measuringMode, tentamos obter posição 3D
+    viewer.addEventListener('click', async (event) => {
+      if (!measuringMode) return;
+
+      // Verifica se API positionAndNormalFromPoint existe
+      if (typeof viewer.positionAndNormalFromPoint !== 'function') {
+        // API não disponível: apenas desativa o modo sem criar ponto
+        console.warn('positionAndNormalFromPoint não disponível neste browser/versão do model-viewer.');
+        measuringMode = false;
+        viewerContainer.classList.remove('measuring-cursor');
+        return;
+      }
+
+      // event.clientX, event.clientY são coordenadas do clique na janela
+      // positionAndNormalFromPoint aceita coordenadas clientX, clientY
+      const posAndNorm = viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
+
+      if (!posAndNorm) {
+        // clique não atingiu a malha; mantém modo desligado
+        measuringMode = false;
+        viewerContainer.classList.remove('measuring-cursor');
+        return;
+      }
+
+      const pos = posAndNorm.position; // {x, y, z}
+      const norm = posAndNorm.normal;  // {x, y, z}
+
+      // cria ou atualiza hotspot preso à malha
+      let hotspot = document.getElementById('measurementHotspot');
+      const positionString = `${pos.x} ${pos.y} ${pos.z}`;
+      const normalString = `${norm.x} ${norm.y} ${norm.z}`;
+
+      if (!hotspot) {
+        hotspot = document.createElement('div');
+        hotspot.id = 'measurementHotspot';
+        hotspot.className = 'measurement-hotspot';
+        // slot name must follow model-viewer hotspot pattern
+        hotspot.setAttribute('slot', 'hotspot-1');
+        hotspot.setAttribute('data-position', positionString);
+        hotspot.setAttribute('data-normal', normalString);
+        // Append hotspot to the model-viewer so it's positioned in 3D space
+        viewer.appendChild(hotspot);
+      } else {
+        hotspot.setAttribute('data-position', positionString);
+        hotspot.setAttribute('data-normal', normalString);
+      }
+
+      // reset mode medir
+      measuringMode = false;
+      viewerContainer.classList.remove('measuring-cursor');
+    });
+
     // ao deixar a página, liberar object URL se existir
     window.addEventListener('beforeunload', () => {
       if (currentObjectURL) {
@@ -139,57 +186,9 @@
       }
     });
 
-    btnMenu.addEventListener('click', () => {
+    document.getElementById('btnMenu').addEventListener('click', () => {
       window.location.href = 'index.html';
     });
-
-    // --- Medir: ativa o modo e insere marcador ao próximo clique ---
-    btnMedir.addEventListener('click', () => {
-      measuring = true;
-      measuringIndicator.style.display = 'block';
-      // foco visual rápido: scrollde to viewer (ajuda em mobile)
-      viewerContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-
-    // Ao clicar dentro da área do viewerContainer enquanto medir==true,
-    // posicionamos um marcador exatamente na coordenada do clique (2D sobre o viewer).
-    // Observação: isso destaca visualmente o ponto que o usuário clicou sobre o modelo.
-    viewerContainer.addEventListener('click', (ev) => {
-      if (!measuring) return;
-
-      // apenas se o viewer estiver visível (ou seja, um arquivo foi carregado)
-      if (viewer.style.display === 'none') {
-        measuring = false;
-        measuringIndicator.style.display = 'none';
-        return;
-      }
-
-      const rect = viewerContainer.getBoundingClientRect();
-      const x = ev.clientX - rect.left;
-      const y = ev.clientY - rect.top;
-
-      // remover marcador anterior, se existir
-      if (currentMarker) {
-        currentMarker.remove();
-        currentMarker = null;
-      }
-
-      // criar novo marcador e posicionar
-      const marker = document.createElement('div');
-      marker.className = 'marker';
-      marker.style.left = `${x}px`;
-      marker.style.top = `${y}px`;
-
-      viewerContainer.appendChild(marker);
-      currentMarker = marker;
-
-      // desativar modo medir após a marcação (conforme pedido: ponto ficará destacado)
-      measuring = false;
-      measuringIndicator.style.display = 'none';
-    });
-
-    // segurança: clique fora do modelo dentro do container também conta como seleção.
-    // isso atende ao requisito de "clicar em um ponto no modelo e destacar".
   </script>
 
 </body>
