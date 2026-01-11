@@ -1,127 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8">
   <title>Página da Digitalização</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="layout.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="layout.css">
 </head>
 <body>
 
   <div id="app">
     <h1>Página da Digitalização</h1>
-
-    <button id="btnCarregar">Carregar</button>
-    <input type="file" id="fileInput" accept=".obj" style="display:none">
-
-    <button id="btnConverter">Converter</button>
-
     <button id="btnMenu">Menu</button>
   </div>
 
-  <!-- Three.js (non-module) + loaders/exporters (non-module) -->
-  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.152.2/examples/js/loaders/OBJLoader.js"></script>
-  <script src="https://unpkg.com/three@0.152.2/examples/js/exporters/GLTFExporter.js"></script>
-
   <script>
-    // Upload (.OBJ) -> salva no cache 'digitalizacao-cache' e guarda o nome em localStorage
-    const btnCarregar = document.getElementById('btnCarregar');
-    const fileInput = document.getElementById('fileInput');
-
-    btnCarregar.addEventListener('click', () => {
-      fileInput.click();
-    });
-
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-
-      // Salva arquivo .obj no cache
-      const cache = await caches.open('digitalizacao-cache');
-      const response = new Response(file);
-      await cache.put(file.name, response);
-
-      // Guarda o nome do último arquivo carregado para uso posterior
-      localStorage.setItem('lastUploadedOBJ', file.name);
-
-      alert("Arquivo carregado");
-    });
-
-    // Converter botão: pega .OBJ do cache, converte para .GLB, salva no cache e baixa no celular
-    document.getElementById('btnConverter').addEventListener('click', async () => {
-      try {
-        const filename = localStorage.getItem('lastUploadedOBJ');
-        if (!filename) {
-          alert('Nenhum arquivo .OBJ encontrado no cache. Primeiro clique em "Carregar" e selecione um arquivo .OBJ.');
-          return;
-        }
-
-        const cache = await caches.open('digitalizacao-cache');
-        const resp = await cache.match(filename);
-
-        if (!resp) {
-          alert('Arquivo .OBJ não encontrado no cache. Refaça o upload com "Carregar".');
-          return;
-        }
-
-        // Lê o conteúdo do .OBJ
-        const objText = await resp.text();
-
-        // Usa Three.js OBJLoader (global THREE.OBJLoader) para criar objeto 3D
-        const loader = new THREE.OBJLoader();
-        const object3d = loader.parse(objText);
-
-        // Usa GLTFExporter para gerar GLB (binary)
-        const exporter = new THREE.GLTFExporter();
-
-        const arrayBuffer = await new Promise((resolve, reject) => {
-          try {
-            exporter.parse(
-              object3d,
-              function (result) {
-                // result será ArrayBuffer quando binary:true
-                if (result instanceof ArrayBuffer) {
-                  resolve(result);
-                } else {
-                  // fallback: se não veio como ArrayBuffer, convertemos para string e depois para ArrayBuffer
-                  const text = JSON.stringify(result);
-                  resolve(new TextEncoder().encode(text).buffer);
-                }
-              },
-              { binary: true } // pede .glb (binário)
-            );
-          } catch (err) {
-            reject(err);
-          }
-        });
-
-        // Cria Blob .glb
-        const blob = new Blob([arrayBuffer], { type: 'model/gltf-binary' });
-        const glbName = filename.replace(/\.obj$/i, '') + '.glb';
-
-        // Salva .glb no mesmo cache
-        await cache.put(glbName, new Response(blob));
-
-        // Dispara download no dispositivo (salva no celular)
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = glbName;
-        // Some mobile browsers require the link to be in the document
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-
-        alert("Arquivo convertido");
-      } catch (error) {
-        console.error('Erro durante conversão:', error);
-        alert('Erro na conversão. Veja o console para detalhes.');
-      }
-    });
-
-    // Botão Menu (retorna para index.html)
     document.getElementById('btnMenu').addEventListener('click', () => {
       window.location.href = 'index.html';
     });
