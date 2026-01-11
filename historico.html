@@ -29,14 +29,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      query,
-      where,
-      orderBy,
-      getDocs
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBgZ73lT6zJG3xDh66QEp0BFFjZN7B0ogc",
@@ -67,6 +60,7 @@
 
       querySnapshot.forEach(doc => {
         const dados = doc.data();
+
         const item = document.createElement('div');
         item.innerHTML = `
           <p><strong>Código:</strong> ${dados.codigoProduto}</p>
