@@ -18,6 +18,7 @@
         placeholder="Código do produto"
         required
       >
+
       <button type="submit">Pesquisar</button>
     </form>
 
@@ -28,7 +29,14 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      orderBy,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBgZ73lT6zJG3xDh66QEp0BFFjZN7B0ogc",
@@ -55,23 +63,23 @@
         orderBy("timestamp", "desc")
       );
 
-      const snapshot = await getDocs(q);
+      const querySnapshot = await getDocs(q);
 
-      snapshot.forEach(doc => {
-        const d = doc.data();
+      querySnapshot.forEach(doc => {
+        const dados = doc.data();
         const item = document.createElement('div');
         item.innerHTML = `
-          <p><strong>Código:</strong> ${d.codigoProduto}</p>
-          <p><strong>Setor:</strong> ${d.setor}</p>
-          <p><strong>Digitalização:</strong> ${d.digitalizacao}</p>
-          <p><strong>Data:</strong> ${d.data}</p>
-          <p><strong>Hora:</strong> ${d.hora}</p>
+          <p><strong>Código:</strong> ${dados.codigoProduto}</p>
+          <p><strong>Setor:</strong> ${dados.setor}</p>
+          <p><strong>Digitalização:</strong> ${dados.digitalizacao}</p>
+          <p><strong>Data:</strong> ${dados.data}</p>
+          <p><strong>Hora:</strong> ${dados.hora}</p>
           <hr>
         `;
         resultadosDiv.appendChild(item);
       });
 
-      alert("Pesquisa concluída");
+      alert("Pesquisas concluída");
     });
 
     document.getElementById('btnMenu').addEventListener('click', () => {
