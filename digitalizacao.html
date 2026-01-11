@@ -14,12 +14,21 @@
     <button id="btnCarregar">Carregar</button>
     <input type="file" id="fileInput" accept=".obj" style="display:none">
 
+    <button id="btnConverter">Converter</button>
+
     <button id="btnMenu">Menu</button>
   </div>
 
-  <script>
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+    import { OBJLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/OBJLoader.js";
+    import { GLTFExporter } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/exporters/GLTFExporter.js";
+
     const btnCarregar = document.getElementById('btnCarregar');
+    const btnConverter = document.getElementById('btnConverter');
     const fileInput = document.getElementById('fileInput');
+
+    let nomeOBJ = null;
 
     btnCarregar.addEventListener('click', () => {
       fileInput.click();
@@ -29,11 +38,46 @@
       const file = fileInput.files[0];
       if (!file) return;
 
+      nomeOBJ = file.name;
+
       const cache = await caches.open('digitalizacao-cache');
-      const response = new Response(file);
-      await cache.put(file.name, response);
+      await cache.put(nomeOBJ, new Response(file));
 
       alert("Arquivo carregado");
+    });
+
+    btnConverter.addEventListener('click', async () => {
+      if (!nomeOBJ) return;
+
+      const cache = await caches.open('digitalizacao-cache');
+      const response = await cache.match(nomeOBJ);
+      if (!response) return;
+
+      const objText = await response.text();
+
+      const loader = new OBJLoader();
+      const object = loader.parse(objText);
+
+      const exporter = new GLTFExporter();
+      exporter.parse(
+        object,
+        async (result) => {
+          const glbBlob = new Blob([result], { type: 'model/gltf-binary' });
+          const glbName = nomeOBJ.replace('.obj', '.glb');
+
+          await cache.put(glbName, new Response(glbBlob));
+
+          const url = URL.createObjectURL(glbBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = glbName;
+          a.click();
+          URL.revokeObjectURL(url);
+
+          alert("Arquivo convertido");
+        },
+        { binary: true }
+      );
     });
 
     document.getElementById('btnMenu').addEventListener('click', () => {
