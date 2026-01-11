@@ -11,27 +11,26 @@
   <div id="app">
     <h1>Página da Digitalização</h1>
 
-    <input
-      type="file"
-      id="arquivoOBJ"
-      accept=".obj"
-    >
-
     <button id="btnCarregar">Carregar</button>
+    <input type="file" id="fileInput" accept=".obj" style="display:none">
 
     <button id="btnMenu">Menu</button>
   </div>
 
   <script>
-    document.getElementById('btnCarregar').addEventListener('click', async () => {
-      const input = document.getElementById('arquivoOBJ');
-      const file = input.files[0];
+    const btnCarregar = document.getElementById('btnCarregar');
+    const fileInput = document.getElementById('fileInput');
 
+    btnCarregar.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
       if (!file) return;
 
-      const cache = await caches.open('arquivos-obj-cache');
+      const cache = await caches.open('digitalizacao-cache');
       const response = new Response(file);
-
       await cache.put(file.name, response);
 
       alert("Arquivo carregado");
