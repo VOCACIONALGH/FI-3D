@@ -24,8 +24,9 @@
     model-viewer {
       width: 100%;
       height: 100%;
-      /* permitir interação para rotacionar; zoom será desabilitado via atributo */
-      touch-action: none;
+      /* permitir interação completa (rotacionar + zoom) */
+      pointer-events: auto;
+      touch-action: auto; /* permite pinch-zoom em dispositivos touch */
       user-select: none;
       -webkit-user-select: none;
     }
@@ -47,14 +48,13 @@
     <!-- área onde o modelo será mostrado com fundo preto -->
     <div id="viewerContainer">
       <!-- inicialmente oculto; será exibido quando um arquivo for carregado
-           camera-controls permite rotacionar; disable-zoom impede zoom -->
+           camera-controls permite rotacionar; zoom está habilitado por omissão -->
       <model-viewer id="viewer"
                     style="display:none; background:black;"
                     exposure="1"
                     alt="Modelo 3D carregado"
                     interaction-prompt="none"
-                    camera-controls
-                    disable-zoom></model-viewer>
+                    camera-controls></model-viewer>
     </div>
 
     <button id="btnMenu">Menu</button>
