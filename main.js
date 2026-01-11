@@ -15,3 +15,10 @@ if (btnHistorico) {
     window.location.href = 'historico.html';
   });
 }
+
+const btnDigitalizacao = document.getElementById('btnDigitalizacao');
+if (btnDigitalizacao) {
+  btnDigitalizacao.addEventListener('click', () => {
+    window.location.href = 'digitalizacao.html';
+  });
+}
