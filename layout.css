@@ -5,7 +5,8 @@ body {
   background: #f2f2f2;
 }
 
-#app {
+#app,
+#telaRegistro {
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -26,4 +27,8 @@ button {
   border-radius: 8px;
   background-color: #1976d2;
   color: white;
+}
+
+.hidden {
+  display: none;
 }
