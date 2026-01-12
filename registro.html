@@ -33,6 +33,13 @@
         required
       >
 
+      <input
+        type="text"
+        id="definicao"
+        placeholder="Definição"
+        required
+      >
+
       <button type="submit">Registrar</button>
     </form>
 
@@ -64,6 +71,7 @@
         codigoProduto: document.getElementById('codigoProduto').value,
         setor: document.getElementById('setor').value,
         digitalizacao: document.getElementById('digitalizacao').value,
+        definicao: document.getElementById('definicao').value,
         data: agora.toLocaleDateString('pt-BR'),
         hora: agora.toLocaleTimeString('pt-BR'),
         timestamp: serverTimestamp()
